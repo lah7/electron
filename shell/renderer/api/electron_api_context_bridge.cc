@@ -859,26 +859,6 @@ bool OverrideGlobalPropertyFromIsolatedWorld(
   }
 }
 
-// Determine if the current context is the main world context.
-bool IsCalledFromMainWorld(v8::Isolate* isolate) {
-  v8::Local<v8::Context> source_context = isolate->GetCurrentContext();
-  auto* ec = blink::ExecutionContext::From(source_context);
-  if (ec->IsWindow()) {
-    auto* render_frame = GetRenderFrame(source_context->Global());
-    CHECK(render_frame);
-    auto* frame = render_frame->GetWebFrame();
-    CHECK(frame);
-    v8::Local<v8::Context> main_context = frame->MainWorldScriptContext();
-    return source_context == main_context;
-  } else if (ec->IsShadowRealmGlobalScope()) {
-    return false;
-  } else if (ec->IsServiceWorkerGlobalScope()) {
-    return true;
-  } else {
-    NOTREACHED();
-  }
-}
-
 // Clones a value into the target context.
 v8::MaybeLocal<v8::Value> CloneValueToContext(
     v8::Isolate* isolate,
@@ -1108,8 +1088,6 @@ void Initialize(v8::Local<v8::Object> exports,
                  &electron::api::OverrideGlobalValueFromIsolatedWorld);
   dict.SetMethod("_overrideGlobalPropertyFromIsolatedWorld",
                  &electron::api::OverrideGlobalPropertyFromIsolatedWorld);
-  dict.SetMethod("_isCalledFromMainWorld",
-                 &electron::api::IsCalledFromMainWorld);
 #if DCHECK_IS_ON()
   dict.Set("_isDebug", true);
 #endif
