@@ -45,15 +45,19 @@ Session.prototype.setDisplayMediaRequestHandler = function (handler, opts) {
 const getPreloadsDeprecated = deprecate.warnOnce('session.getPreloads', 'session.getPreloadScripts');
 Session.prototype.getPreloads = function () {
   getPreloadsDeprecated();
-  return this.getPreloadScripts().filter(script => script.type === 'frame').map(script => script.filePath);
+  return this.getPreloadScripts()
+    .filter((script) => script.type === 'frame')
+    .map((script) => script.filePath);
 };
 
 const setPreloadsDeprecated = deprecate.warnOnce('session.setPreloads', 'session.registerPreloadScript');
 Session.prototype.setPreloads = function (preloads) {
   setPreloadsDeprecated();
-  this.getPreloadScripts().forEach(script => {
-    this.unregisterPreloadScript(script.id);
-  });
+  this.getPreloadScripts()
+    .filter((script) => script.type === 'frame')
+    .forEach((script) => {
+      this.unregisterPreloadScript(script.id);
+    });
   preloads.map(filePath => ({
     type: 'frame',
     filePath,
