@@ -1,0 +1,57 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Calvin Watford <watfordcalvin@gmail.com>
+Date: Mon, 9 Dec 2024 16:58:15 -0700
+Subject: [Corner Smoothing] `-electron-corner-smoothing` CSS rule
+
+TODO: merge into one patch
+
+diff --git a/third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom b/third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom
+index 0aa01d192d8bfe91f4a4d6d6560e31921c7377e4..4ce74a780a47135921f1cbbf7086cc0f7a8837e7 100644
+--- a/third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom
++++ b/third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom
+@@ -48,6 +48,7 @@ enum CSSSampleId {
+     kInternalForcedVisitedColor = 0,
+     kInternalOverflowBlock = 0,
+     kInternalOverflowInline = 0,
++    kElectronCornerSmoothing = 0,
+ 
+     // This CSSSampleId represents page load for CSS histograms. It is recorded once
+     // per page visit for each CSS histogram being logged on the blink side and the
+diff --git a/third_party/blink/renderer/core/css/css_properties.json5 b/third_party/blink/renderer/core/css/css_properties.json5
+index a28a04a85f7aef24e5a6c6438e2d12023e429385..f59d05718ad539c82416b639eda37b7225ae2d15 100644
+--- a/third_party/blink/renderer/core/css/css_properties.json5
++++ b/third_party/blink/renderer/core/css/css_properties.json5
+@@ -8787,6 +8787,20 @@
+       converter: "ConvertInternalAlignContentBlock",
+       invalidate: ["layout"],
+     },
++
++    {
++      name: "-electron-corner-smoothing",
++      // TODO: property_methods: ["ParseSingleValue"],
++      converter: "ConvertNumberOrPercentage",
++      field_group: "*",
++      // TODO: only percentage
++      field_template: "primitive",
++      type_name: "float",
++      default_value: "0",
++      typedom_types: ["Percentage"],
++      is_border_radius: true,
++      invalidate: ["paint"],
++    },
+     // Aliases; these map to the same CSSPropertyID
+     {
+       name: "-epub-caption-side",
+diff --git a/third_party/blink/renderer/core/css/css_property_equality.cc b/third_party/blink/renderer/core/css/css_property_equality.cc
+index abdf3baaa5bb5cef6923c4817dc34dd01b2cbf6f..6743bfe4ce5ed4364ac4c3bd4bc3616cbcf64a44 100644
+--- a/third_party/blink/renderer/core/css/css_property_equality.cc
++++ b/third_party/blink/renderer/core/css/css_property_equality.cc
+@@ -336,6 +336,8 @@ bool CSSPropertyEquality::PropertiesEqual(const PropertyHandle& property,
+       return a.DominantBaseline() == b.DominantBaseline();
+     case CSSPropertyID::kDynamicRangeLimit:
+       return a.GetDynamicRangeLimit() == b.GetDynamicRangeLimit();
++    case CSSPropertyID::kElectronCornerSmoothing:
++      return a.ElectronCornerSmoothing() == b.ElectronCornerSmoothing();
+     case CSSPropertyID::kEmptyCells:
+       return a.EmptyCells() == b.EmptyCells();
+     case CSSPropertyID::kFill:
