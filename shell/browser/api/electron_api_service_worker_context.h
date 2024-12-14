@@ -21,6 +21,11 @@ template <typename T>
 class Handle;
 }  // namespace gin
 
+namespace gin_helper {
+template <typename T>
+class Promise;
+}  // namespace gin_helper
+
 namespace electron {
 
 class ElectronBrowserContext;
@@ -43,11 +48,22 @@ class ServiceWorkerContext final
                                             int64_t version_id);
   v8::Local<v8::Value> GetFromVersionID(gin_helper::ErrorThrower thrower,
                                         int64_t version_id);
-  v8::Local<v8::Value> GetWorkerFromVersionID(gin_helper::ErrorThrower thrower,
+  v8::Local<v8::Value> GetWorkerFromVersionID(v8::Isolate* isolate,
                                               int64_t version_id);
   gin::Handle<ServiceWorkerMain> GetWorkerFromVersionIDIfExists(
       v8::Isolate* isolate,
       int64_t version_id);
+  v8::Local<v8::Promise> StartWorkerForScope(v8::Isolate* isolate, GURL scope);
+  void DidStartWorkerForScope(
+      std::shared_ptr<gin_helper::Promise<v8::Local<v8::Value>>> shared_promise,
+      int64_t version_id,
+      int process_id,
+      int thread_id);
+  void DidFailToStartWorkerForScope(
+      std::shared_ptr<gin_helper::Promise<v8::Local<v8::Value>>> shared_promise,
+      blink::ServiceWorkerStatusCode status_code);
+  void StopWorkersForScope(GURL scope);
+  v8::Local<v8::Promise> StopAllWorkers(v8::Isolate* isolate);
 
   // content::ServiceWorkerContextObserver
   void OnReportConsoleMessage(int64_t version_id,

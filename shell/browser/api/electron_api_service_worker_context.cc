@@ -20,6 +20,7 @@
 #include "shell/common/gin_converters/service_worker_converter.h"
 #include "shell/common/gin_converters/value_converter.h"
 #include "shell/common/gin_helper/dictionary.h"
+#include "shell/common/gin_helper/promise.h"
 #include "shell/common/node_util.h"
 
 using ServiceWorkerStatus =
@@ -200,14 +201,13 @@ v8::Local<v8::Value> ServiceWorkerContext::GetFromVersionID(
 }
 
 v8::Local<v8::Value> ServiceWorkerContext::GetWorkerFromVersionID(
-    gin_helper::ErrorThrower thrower,
+    v8::Isolate* isolate,
     int64_t version_id) {
-  return ServiceWorkerMain::From(thrower.isolate(), service_worker_context_,
+  return ServiceWorkerMain::From(isolate, service_worker_context_,
                                  storage_partition_, version_id)
       .ToV8();
 }
 
-// static
 gin::Handle<ServiceWorkerMain>
 ServiceWorkerContext::GetWorkerFromVersionIDIfExists(v8::Isolate* isolate,
                                                      int64_t version_id) {
@@ -216,6 +216,57 @@ ServiceWorkerContext::GetWorkerFromVersionIDIfExists(v8::Isolate* isolate,
   if (!worker)
     return gin::Handle<ServiceWorkerMain>();
   return gin::CreateHandle(isolate, worker);
+}
+
+v8::Local<v8::Promise> ServiceWorkerContext::StartWorkerForScope(
+    v8::Isolate* isolate,
+    GURL scope) {
+  auto shared_promise =
+      std::make_shared<gin_helper::Promise<v8::Local<v8::Value>>>(isolate);
+  v8::Local<v8::Promise> handle = shared_promise->GetHandle();
+
+  blink::StorageKey storage_key =
+      blink::StorageKey::CreateFirstParty(url::Origin::Create(scope));
+  service_worker_context_->StartWorkerForScope(
+      scope, storage_key,
+      base::BindOnce(&ServiceWorkerContext::DidStartWorkerForScope,
+                     weak_ptr_factory_.GetWeakPtr(), shared_promise),
+      base::BindOnce(&ServiceWorkerContext::DidFailToStartWorkerForScope,
+                     weak_ptr_factory_.GetWeakPtr(), shared_promise));
+
+  return handle;
+}
+
+void ServiceWorkerContext::DidStartWorkerForScope(
+    std::shared_ptr<gin_helper::Promise<v8::Local<v8::Value>>> shared_promise,
+    int64_t version_id,
+    int process_id,
+    int thread_id) {
+  v8::Isolate* isolate = shared_promise->isolate();
+  v8::HandleScope handle_scope(isolate);
+  v8::Local<v8::Value> service_worker_main =
+      GetWorkerFromVersionID(isolate, version_id);
+  shared_promise->Resolve(service_worker_main);
+  shared_promise.reset();
+}
+
+void ServiceWorkerContext::DidFailToStartWorkerForScope(
+    std::shared_ptr<gin_helper::Promise<v8::Local<v8::Value>>> shared_promise,
+    blink::ServiceWorkerStatusCode status_code) {
+  shared_promise->RejectWithErrorMessage("Failed to start service worker.");
+  shared_promise.reset();
+}
+
+v8::Local<v8::Promise> ServiceWorkerContext::StopAllWorkers(
+    v8::Isolate* isolate) {
+  auto promise = gin_helper::Promise<void>(isolate);
+  v8::Local<v8::Promise> handle = promise.GetHandle();
+
+  service_worker_context_->StopAllServiceWorkers(base::BindOnce(
+      [](gin_helper::Promise<void> promise) { promise.Resolve(); },
+      std::move(promise)));
+
+  return handle;
 }
 
 // static
@@ -239,7 +290,10 @@ gin::ObjectTemplateBuilder ServiceWorkerContext::GetObjectTemplateBuilder(
       .SetMethod("getWorkerFromVersionID",
                  &ServiceWorkerContext::GetWorkerFromVersionID)
       .SetMethod("_getWorkerFromVersionIDIfExists",
-                 &ServiceWorkerContext::GetWorkerFromVersionIDIfExists);
+                 &ServiceWorkerContext::GetWorkerFromVersionIDIfExists)
+      .SetMethod("startWorkerForScope",
+                 &ServiceWorkerContext::StartWorkerForScope)
+      .SetMethod("_stopAllWorkers", &ServiceWorkerContext::StopAllWorkers);
 }
 
 const char* ServiceWorkerContext::GetTypeName() {

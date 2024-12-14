@@ -124,15 +124,6 @@ class ServiceWorkerMain final
   void Destroy();
   const blink::StorageKey GetStorageKey();
 
-  // Start the worker if not already running.
-  v8::Local<v8::Promise> StartWorker(v8::Isolate* isolate);
-  void DidStartWorkerForScope(int64_t version_id,
-                              int process_id,
-                              int thread_id);
-  void DidStartWorkerFail(blink::ServiceWorkerStatusCode status_code);
-
-  void StopWorker();
-
   // Increments external requests for the service worker to keep it alive.
   gin_helper::Dictionary StartExternalRequest(v8::Isolate* isolate,
                                               bool has_timeout);

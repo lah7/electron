@@ -68,6 +68,7 @@ declare namespace Electron {
 
   interface ServiceWorkers {
     _getWorkerFromVersionIDIfExists(versionId: number): Electron.ServiceWorkerMain | undefined;
+    _stopAllWorkers(): Promise<void>;
   }
 
   interface ServiceWorkerMain {
@@ -75,7 +76,6 @@ declare namespace Electron {
     _startExternalRequest(hasTimeout: boolean): { id: string, ok: boolean };
     _finishExternalRequest(uuid: string): void;
     _countExternalRequests(): number;
-    _stopWorker(): void;
   }
 
   interface Session {

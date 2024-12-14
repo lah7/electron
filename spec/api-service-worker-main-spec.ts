@@ -178,48 +178,50 @@ describe('ServiceWorkerMain module', () => {
 
   describe('"running-status-changed" event', () => {
     it('handles when content::ServiceWorkerVersion has been destroyed', async () => {
-      loadWorkerScript();
+      loadWorkerScript('sw-unregister-self.js');
       const serviceWorker = await waitForServiceWorker('running');
-      // This delay is a precondition for a crash that occurred
-      await new Promise<void>((resolve) => setTimeout(resolve, 50));
-      serviceWorker?._stopWorker();
-      wc.destroy();
       await waitUntil(() => serviceWorker.isDestroyed());
     });
   });
 
-  describe('startWorker()', () => {
+  describe('startWorkerForScope()', () => {
     it('resolves with running workers', async () => {
       loadWorkerScript();
       const serviceWorker = await waitForServiceWorker('running');
-      const startWorkerPromise = serviceWorker.startWorker();
+      const startWorkerPromise = serviceWorkers.startWorkerForScope(serviceWorker.scope);
       await expect(startWorkerPromise).to.eventually.be.fulfilled();
+      const otherSW = await startWorkerPromise;
+      expect(otherSW).to.equal(serviceWorker);
     });
 
     it('rejects with starting workers', async () => {
       loadWorkerScript();
       const serviceWorker = await waitForServiceWorker('starting');
-      const startWorkerPromise = serviceWorker.startWorker();
+      const startWorkerPromise = serviceWorkers.startWorkerForScope(serviceWorker.scope);
       await expect(startWorkerPromise).to.eventually.be.rejected();
     });
 
     it('starts previously stopped worker', async () => {
       loadWorkerScript();
       const serviceWorker = await waitForServiceWorker('running');
+      const { scope } = serviceWorker;
       const stoppedPromise = waitForServiceWorker('stopped');
-      serviceWorker._stopWorker();
+      await serviceWorkers._stopAllWorkers();
       await stoppedPromise;
-      const startWorkerPromise = serviceWorker.startWorker();
+      const startWorkerPromise = serviceWorkers.startWorkerForScope(scope);
       await expect(startWorkerPromise).to.eventually.be.fulfilled();
     });
 
     it('resolves when called twice', async () => {
       loadWorkerScript();
       const serviceWorker = await waitForServiceWorker('running');
-      await Promise.all([
-        serviceWorker.startWorker(),
-        serviceWorker.startWorker()
+      const { scope } = serviceWorker;
+      const [swA, swB] = await Promise.all([
+        serviceWorkers.startWorkerForScope(scope),
+        serviceWorkers.startWorkerForScope(scope)
       ]);
+      expect(swA).to.equal(swB);
+      expect(swA).to.equal(serviceWorker);
     });
   });
 
@@ -362,9 +364,10 @@ describe('ServiceWorkerMain module', () => {
       it('works after restarting worker', async () => {
         loadWorkerScript();
         const serviceWorker = await waitForServiceWorker('running');
+        const { scope } = serviceWorker;
         serviceWorker.ipc.handle('ping', () => 'pong');
-        serviceWorker._stopWorker();
-        await serviceWorker.startWorker();
+        await serviceWorkers._stopAllWorkers();
+        await serviceWorkers.startWorkerForScope(scope);
         const result = await runTest(serviceWorker, { name: 'testInvoke', args: ['ping'] });
         expect(result).to.equal('pong');
       });

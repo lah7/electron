@@ -98,3 +98,32 @@ If the service worker does not exist or is not running this method will throw an
 * `versionId` number - ID of the service worker version
 
 Returns [`ServiceWorkerMain | undefined`](service-worker-main.md) - Instance of the service worker associated with the given version ID.
+
+#### `serviceWorkers.startWorkerForScope(scope)` _Experimental_
+
+* `scope` string - The scope of the service worker to start.
+
+Returns `Promise<ServiceWorkerMain>` - Resolves with the service worker when it's started.
+
+Starts the service worker or does nothing if already running.
+
+```js
+const { app, session } = require('electron')
+const { serviceWorkers } = session.defaultSession
+
+// Collect service workers scopes
+const workerScopes = Object.values(serviceWorkers.getAllRunning()).map((info) => info.scope)
+
+app.on('browser-window-created', async (event, window) => {
+  for (const scope of workerScopes) {
+    try {
+      // Ensure worker is started and send message
+      const serviceWorker = await serviceWorkers.startWorkerForScope(scope)
+      serviceWorker.send('window-created', { windowId: window.id })
+    } catch (error) {
+      console.error(`Failed to start service worker for ${scope}`)
+      console.error(error)
+    }
+  }
+})
+```

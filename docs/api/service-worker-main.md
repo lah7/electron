@@ -28,33 +28,6 @@ Sending Functions, Promises, Symbols, WeakMaps, or WeakSets will throw an except
 The service worker process can handle the message by listening to `channel` with the
 [`ipcRenderer`](ipc-renderer.md) module.
 
-#### `serviceWorker.startWorker()` _Experimental_
-
-Returns `Promise<void>` - Resolves when the service worker has started.
-
-Starts the service worker or does nothing if already running.
-
-```js
-const { app, session } = require('electron')
-const { serviceWorkers } = session.defaultSession
-
-// Collect service workers
-const versions = Object.values(serviceWorkers.getAllRunning()).map(({ versionId }) => {
-  return serviceWorkers.getWorkerFromVersionID(versionId)
-})
-
-app.on('browser-window-created', (event, window) => {
-  for (const serviceWorker of versions) {
-    if (serviceWorker.isDestroyed()) continue
-
-    // Request starting worker if it's not running
-    serviceWorker.startWorker().then(() => {
-      serviceWorker.send('window-created', { windowId: window.id })
-    })
-  }
-})
-```
-
 #### `serviceWorker.startTask()` _Experimental_
 
 Returns `Object`:

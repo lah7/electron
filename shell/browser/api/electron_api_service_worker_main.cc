@@ -182,47 +182,6 @@ const blink::StorageKey ServiceWorkerMain::GetStorageKey() {
   return blink::StorageKey::CreateFirstParty(url::Origin::Create(scope));
 }
 
-v8::Local<v8::Promise> ServiceWorkerMain::StartWorker(v8::Isolate* isolate) {
-  if (version_destroyed_) {
-    auto promise = gin_helper::Promise<void>(isolate);
-    promise.RejectWithErrorMessage("ServiceWorkerMain is destroyed");
-    return promise.GetHandle();
-  }
-
-  if (start_worker_promise_) {
-    return start_worker_promise_->GetHandle();
-  }
-
-  start_worker_promise_ = std::make_unique<gin_helper::Promise<void>>(isolate);
-
-  service_worker_context_->StartWorkerForScope(
-      ScopeURL(), GetStorageKey(),
-      base::BindOnce(&ServiceWorkerMain::DidStartWorkerForScope,
-                     weak_factory_.GetWeakPtr()),
-      base::BindOnce(&ServiceWorkerMain::DidStartWorkerFail,
-                     weak_factory_.GetWeakPtr()));
-
-  return start_worker_promise_->GetHandle();
-}
-
-void ServiceWorkerMain::DidStartWorkerForScope(int64_t version_id,
-                                               int process_id,
-                                               int thread_id) {
-  start_worker_promise_->Resolve();
-  start_worker_promise_.reset();
-}
-
-void ServiceWorkerMain::DidStartWorkerFail(
-    blink::ServiceWorkerStatusCode status_code) {
-  start_worker_promise_->RejectWithErrorMessage(
-      "Failed to start service worker.");
-  start_worker_promise_.reset();
-}
-
-void ServiceWorkerMain::StopWorker() {
-  service_worker_context_->StopAllServiceWorkersForStorageKey(GetStorageKey());
-}
-
 gin_helper::Dictionary ServiceWorkerMain::StartExternalRequest(
     v8::Isolate* isolate,
     bool has_timeout) {
@@ -324,14 +283,12 @@ void ServiceWorkerMain::FillObjectTemplate(
   gin_helper::ObjectTemplateBuilder(isolate, templ)
       .SetMethod("_send", &ServiceWorkerMain::Send)
       .SetMethod("isDestroyed", &ServiceWorkerMain::IsDestroyed)
-      .SetMethod("startWorker", &ServiceWorkerMain::StartWorker)
       .SetMethod("_startExternalRequest",
                  &ServiceWorkerMain::StartExternalRequest)
       .SetMethod("_finishExternalRequest",
                  &ServiceWorkerMain::FinishExternalRequest)
       .SetMethod("_countExternalRequests",
                  &ServiceWorkerMain::CountExternalRequests)
-      .SetMethod("_stopWorker", &ServiceWorkerMain::StopWorker)
       .SetProperty("versionId", &ServiceWorkerMain::VersionID)
       .SetProperty("scope", &ServiceWorkerMain::ScopeURL)
       .Build();
