@@ -2,7 +2,7 @@
 
 ## Class: Menu
 
-> Create native application menus and context menus.
+> Create application menus and context menus in the style of Chromium.
 
 Process: [Main](../glossary.md#main-process)
 
